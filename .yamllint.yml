@@ -1,0 +1,24 @@
+---
+extends: default
+
+ignore: |
+  .build/
+  charts/demo-app/templates/
+
+rules:
+  # Kubernetes manifests are wide by nature: image digests, long annotations and
+  # RFC-1123 hostnames all blow past 80 columns without gaining readability.
+  line-length:
+    max: 140
+    level: error
+  # `on:` in GitHub Actions is a legitimate key, not the boolean `true`.
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  document-start:
+    present: true
