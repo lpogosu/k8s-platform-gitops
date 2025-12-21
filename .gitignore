@@ -1,0 +1,25 @@
+# Local cluster / tooling state
+kubeconfig
+kubeconfig-*
+.kube/
+*.kubeconfig
+
+# Helm
+charts/**/charts/
+charts/**/Chart.lock
+*.tgz
+
+# Rendered output from `make validate`
+.build/
+*.rendered.yaml
+
+# Secrets: only SealedSecrets belong in git, never their plaintext source
+*.plain.yaml
+secrets.yaml
+.env
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
