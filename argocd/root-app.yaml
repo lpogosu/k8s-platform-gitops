@@ -1,0 +1,39 @@
+---
+# The single object that has to be applied by hand. Everything else in the
+# cluster is a consequence of this Application reconciling `argocd/apps`.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/lpogosu/k8s-platform-gitops.git
+    targetRevision: main
+    path: argocd/apps
+    directory:
+      recurse: false
+      include: "*.yaml"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      # Deleting a file under argocd/apps must delete the Application it
+      # declared, otherwise removing a component from git leaves it running.
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
