@@ -1,0 +1,30 @@
+---
+# Split from the cert-manager Application on purpose: a ClusterIssuer is
+# rejected until the cert-manager validating webhook is serving. Keeping the
+# issuers in their own Application lets a sync wave express that dependency.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-issuers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/lpogosu/k8s-platform-gitops.git
+    targetRevision: main
+    path: platform/cert-manager-issuers
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
