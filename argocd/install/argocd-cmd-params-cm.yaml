@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+data:
+  # The API server terminates plain HTTP. `make port-forward` then works over
+  # http://localhost:8080 without a self-signed certificate warning. On a real
+  # cluster the TLS termination moves to the ingress and this flag stays off.
+  server.insecure: "true"
+  # Single-node laptop cluster: one shard, no need for the default HA sharding.
+  controller.status.processors: "8"
+  controller.operation.processors: "4"

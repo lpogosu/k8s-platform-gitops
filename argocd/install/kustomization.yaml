@@ -1,0 +1,16 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  - namespace.yaml
+  # Upstream non-HA install manifest, pinned to a release tag. Rendering it
+  # through Kustomize instead of `kubectl apply -f <url>` means the local
+  # overrides below are part of the same declarative unit.
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.2.3/manifests/install.yaml
+
+patches:
+  - path: argocd-cm.yaml
+  - path: argocd-cmd-params-cm.yaml

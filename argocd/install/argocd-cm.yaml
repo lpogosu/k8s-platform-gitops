@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  # deploy/base inflates the local Helm chart from inside a Kustomization.
+  # Without this flag the repo-server refuses `helmCharts:` and every overlay
+  # fails to render with "must specify --enable-helm".
+  kustomize.buildOptions: "--enable-helm"
+
+  # Track ownership through an annotation instead of the default label. The
+  # label variant writes app.kubernetes.io/instance on every managed object,
+  # which collides with the same label emitted by Helm charts.
+  application.resourceTrackingMethod: annotation
+
+  # kind runs on a laptop; a one-minute reconcile keeps drift detection
+  # responsive without hammering the API server.
+  timeout.reconciliation: 60s
