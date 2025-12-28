@@ -1,0 +1,41 @@
+---
+# Application workloads. Deliberately narrower than `platform`: a workload has
+# no business creating CRDs or ClusterRoleBindings, and an accidental one in a
+# pull request should fail the sync instead of landing in the cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Application workloads deployed from deploy/overlays
+
+  sourceRepos:
+    - https://github.com/lpogosu/k8s-platform-gitops.git
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: demo-dev
+    - server: https://kubernetes.default.svc
+      namespace: demo-stage
+    - server: https://kubernetes.default.svc
+      namespace: demo-prod
+
+  # Namespaces are the only cluster-scoped object a workload may create, and
+  # only because syncOptions.CreateNamespace=true needs it.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  namespaceResourceBlacklist:
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: ""
+      kind: ResourceQuota
+
+  orphanedResources:
+    warn: true
