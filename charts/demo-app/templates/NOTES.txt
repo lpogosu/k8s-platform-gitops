@@ -1,0 +1,17 @@
+{{ .Chart.Name }} {{ .Chart.Version }} rendered for release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+
+{{ if .Values.ingress.enabled -}}
+Reachable at {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}{{ .Values.ingress.path }}
+{{- else -}}
+No Ingress was created. Reach the service from inside the cluster at
+{{ include "demo-app.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+{{- end }}
+
+Replicas: {{ if .Values.autoscaling.enabled }}{{ .Values.autoscaling.minReplicas }}-{{ .Values.autoscaling.maxReplicas }} (HPA on CPU {{ .Values.autoscaling.targetCPUUtilizationPercentage }}%){{ else }}{{ .Values.replicaCount }} (fixed){{ end }}
+Request environment dump: {{ .Values.echo.exposeEnvironment }}
+
+Check that the pods are serving:
+
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "demo-app.fullname" . }}
+  kubectl -n {{ .Release.Namespace }} run curl --rm -it --restart=Never --image=curlimages/curl:8.11.1 -- \
+    curl -s http://{{ include "demo-app.fullname" . }}:{{ .Values.service.port }}/
