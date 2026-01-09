@@ -1,0 +1,22 @@
+---
+# The only overlay with a hostname that is not resolvable from a laptop. It is
+# here to show the shape of the production manifest, not to be applied to the
+# kind cluster.
+- op: replace
+  path: /spec/rules/0/host
+  value: demo.example.com
+- op: add
+  path: /metadata/annotations
+  value:
+    cert-manager.io/cluster-issuer: platform-local-ca
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+    # 30 requests/minute per source IP. The echo endpoint is cheap, but an
+    # unbounded one is still a free amplifier.
+    nginx.ingress.kubernetes.io/limit-rpm: "30"
+- op: add
+  path: /spec/tls
+  value:
+    - hosts:
+        - demo.example.com
+      secretName: demo-app-tls

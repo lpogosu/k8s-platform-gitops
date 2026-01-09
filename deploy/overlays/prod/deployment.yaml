@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  # Keep enough history to roll back past one bad release without keeping
+  # every ReplicaSet ever created.
+  revisionHistoryLimit: 5
+  template:
+    spec:
+      # Long enough for in-flight requests to finish behind a 30s ingress
+      # proxy timeout.
+      terminationGracePeriodSeconds: 45
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: demo-app
+              app.kubernetes.io/instance: demo-app
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          # Best-effort per node: with 3 replicas over 2 zones a strict
+          # per-node constraint would leave a pod unschedulable.
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: demo-app
+              app.kubernetes.io/instance: demo-app
+      containers:
+        - name: echo
+          env:
+            # Never reflect request headers in prod: they carry cookies and
+            # Authorization values that would end up in somebody's screenshot.
+            - name: ENABLE__HEADER
+              value: "false"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
