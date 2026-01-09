@@ -1,0 +1,28 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  # No HPA in this overlay, so the replica count is owned by git.
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: echo
+          env:
+            # Dump the pod environment into the response body. This is exactly
+            # what makes the echo useful while wiring up a new manifest, and
+            # exactly why it is off in stage and prod.
+            - name: ENABLE__ENVIRONMENT
+              value: "true"
+            # Log the probe traffic too: on one replica the noise is tolerable
+            # and a failing readiness probe is then visible in the log.
+            - name: LOGS__IGNORE__PING
+              value: "false"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 96Mi

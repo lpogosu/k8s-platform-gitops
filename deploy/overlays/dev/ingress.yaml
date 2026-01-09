@@ -1,0 +1,7 @@
+---
+# localtest.me resolves any subdomain to 127.0.0.1, so this works against the
+# kind cluster without touching /etc/hosts. Plain HTTP: a browser warning on
+# every request costs more than the certificate is worth in dev.
+- op: replace
+  path: /spec/rules/0/host
+  value: demo.dev.localtest.me
