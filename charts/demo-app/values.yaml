@@ -1,0 +1,134 @@
+---
+# Defaults describe a small but production-shaped deployment. Environment
+# differences live in deploy/overlays, not here — see README.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Only used when autoscaling.enabled is false. With an HPA active the template
+# omits .spec.replicas entirely, otherwise Argo CD and the HPA would fight over
+# the field on every reconcile.
+replicaCount: 2
+
+image:
+  repository: ealen/echo-server
+  tag: "0.9.2"
+  # Pinned by digest so a re-tagged upstream image cannot change what runs.
+  # The tag above is kept for readability; the digest is what is resolved.
+  digest: sha256:006b92e1d6682442e29d1d0d73c34a61166d42f8a5bf1ea10c318f07ad4790e2
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  # The app talks to nothing in the API server.
+  automountServiceAccountToken: false
+
+# Every key maps to an environment variable that ealen/echo-server reads.
+echo:
+  # The container runs as a non-root user and cannot bind a privileged port.
+  port: 8080
+  # Reflect the pod environment back to the caller. Genuinely useful while
+  # debugging a deployment, a disclosure hole anywhere a user can reach.
+  exposeEnvironment: false
+  # Reflect the inbound request headers.
+  exposeHeaders: true
+  # Keep probe traffic out of the access log; on a 3-replica deployment the
+  # probes alone are ~1 log line per second.
+  ignoreProbeLogs: true
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  host: demo.localtest.me
+  path: /
+  pathType: Prefix
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: demo-app-tls
+    # Referenced through the cert-manager.io/cluster-issuer annotation.
+    clusterIssuer: platform-local-ca
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 48Mi
+  limits:
+    # No CPU limit on purpose: a limit only adds CFS throttling to a workload
+    # that is already bounded by its request-based share. Memory is limited
+    # because memory pressure is not shareable.
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  # Namespace allowed to reach the pods, matched on the built-in
+  # kubernetes.io/metadata.name label.
+  ingressFromNamespace: ingress-nginx
+  # Namespace running CoreDNS, the only egress destination the app needs.
+  dnsNamespace: kube-system
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  privileged: false
+  capabilities:
+    drop:
+      - ALL
+
+# Node.js writes nothing outside /tmp, so a small emptyDir is enough to keep
+# the root filesystem read-only.
+tmpDirSizeLimit: 32Mi
+
+terminationGracePeriodSeconds: 30
+
+probes:
+  startup:
+    failureThreshold: 20
+    periodSeconds: 2
+  readiness:
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 15
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+topologySpreadConstraints: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}
+priorityClassName: ""
+revisionHistoryLimit: 3
