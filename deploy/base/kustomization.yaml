@@ -1,0 +1,20 @@
+---
+# The base is the chart rendered once with the values that hold everywhere.
+# It is never applied on its own — there is no namespace and no hostname here,
+# because those are the two things that always differ per environment.
+#
+# Rendering the chart inside Kustomize (instead of letting Argo CD call Helm
+# directly) is what makes `deploy/overlays/*` able to patch chart output.
+# It requires `--enable-helm`, which is set for the repo-server in
+# argocd/install/argocd-cm.yaml and passed explicitly by scripts/validate.sh.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+helmGlobals:
+  chartHome: ../../charts
+
+helmCharts:
+  - name: demo-app
+    releaseName: demo-app
+    valuesFile: chart-values.yaml
+    includeCRDs: false
