@@ -1,0 +1,8 @@
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: demo-app
+spec:
+  # minReplicas is 3, so requiring 2 still lets one node drain at a time.
+  minAvailable: 2

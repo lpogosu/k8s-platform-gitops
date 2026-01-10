@@ -1,0 +1,25 @@
+---
+# prod: three replicas minimum spread over zones, a disruption budget that
+# survives a node drain, a real hostname, and no debugging affordances.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo-prod
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/environment: prod
+
+patches:
+  - path: deployment.yaml
+  - path: hpa.yaml
+  - path: pdb.yaml
+  - path: ingress.yaml
+    target:
+      kind: Ingress
+      name: demo-app
