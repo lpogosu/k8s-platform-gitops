@@ -1,0 +1,25 @@
+---
+# stage: the same shape as prod at a smaller size. It exists to catch the
+# things that only appear with more than one replica — rolling updates,
+# disruption budgets, TLS issuance — before they appear in prod.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo-stage
+
+resources:
+  - ../../base
+  - namespace.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/environment: stage
+
+patches:
+  - path: deployment.yaml
+  - path: hpa.yaml
+  - path: ingress.yaml
+    target:
+      kind: Ingress
+      name: demo-app
