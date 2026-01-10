@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  template:
+    spec:
+      # Two replicas, two zones: a rolling update or a node drain always keeps
+      # one zone serving. Enforced rather than best-effort, because with
+      # maxUnavailable=0 the scheduler is never in a hurry.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: demo-app
+              app.kubernetes.io/instance: demo-app
+      containers:
+        - name: echo
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 160Mi

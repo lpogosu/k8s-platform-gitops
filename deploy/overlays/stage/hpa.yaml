@@ -1,0 +1,10 @@
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demo-app
+spec:
+  # Narrower than prod: stage carries synthetic load, and a wide range here
+  # would only hide the fact that the requests are sized wrong.
+  minReplicas: 2
+  maxReplicas: 4

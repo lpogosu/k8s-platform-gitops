@@ -1,0 +1,18 @@
+---
+# TLS is on from stage onwards, issued by the cluster-local CA. Using the same
+# annotation contract as prod means the only thing that changes on the way to
+# production is which ClusterIssuer is installed.
+- op: replace
+  path: /spec/rules/0/host
+  value: demo.stage.localtest.me
+- op: add
+  path: /metadata/annotations
+  value:
+    cert-manager.io/cluster-issuer: platform-local-ca
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+- op: add
+  path: /spec/tls
+  value:
+    - hosts:
+        - demo.stage.localtest.me
+      secretName: demo-app-tls
