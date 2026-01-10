@@ -1,0 +1,42 @@
+---
+# Local three-node cluster used by `make up`.
+#
+# The control-plane node carries the ingress controller: ports 80/443 of the
+# host are mapped straight into it, so `http://demo.dev.localtest.me` reaches
+# the cluster without a port-forward or a LoadBalancer implementation.
+# Workloads land on the two workers, which keeps the ingress path and the
+# application path on different nodes and makes NetworkPolicy and
+# topologySpreadConstraints behave like they would on a real cluster.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: platform
+
+networking:
+  apiServerAddress: "127.0.0.1"
+  apiServerPort: 6443
+  # kindnet does not implement NetworkPolicy. The policies in this repo are
+  # therefore validated but not enforced here; see README, "Решения и компромиссы".
+  disableDefaultCNI: false
+
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.33.4@sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2
+    # ingress-nginx is pinned here by nodeSelector; the label has to exist
+    # before the controller is scheduled.
+    labels:
+      ingress-ready: "true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+  - role: worker
+    image: kindest/node:v1.33.4@sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2
+    labels:
+      topology.kubernetes.io/zone: zone-a
+  - role: worker
+    image: kindest/node:v1.33.4@sha256:25a6018e48dfcaee478f4a59af81157a437f15e6e140bf103f85a2e7cd0cbbf2
+    labels:
+      topology.kubernetes.io/zone: zone-b
