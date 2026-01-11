@@ -1,0 +1,14 @@
+---
+# Step 3: the issuer workloads actually reference. Every certificate it signs
+# chains up to a single root, so trusting one certificate in the browser or in
+# curl is enough to reach any TLS service on the local cluster.
+#
+# This is the drop-in point for ACME in a real environment: replace `ca` with
+# an `acme` block and the Ingress annotations stay unchanged.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: platform-local-ca
+spec:
+  ca:
+    secretName: platform-local-ca

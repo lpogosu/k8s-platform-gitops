@@ -1,0 +1,23 @@
+---
+# Step 2: one root CA for the whole cluster, signed by the bootstrap issuer.
+# The secret lives in the cert-manager namespace because that is the cluster
+# resource namespace a ClusterIssuer reads its CA material from.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-local-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: platform-local-ca
+  secretName: platform-local-ca
+  duration: 8760h    # 1 year
+  renewBefore: 720h  # 30 days
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    name: selfsigned-bootstrap
+    kind: ClusterIssuer
+    group: cert-manager.io
