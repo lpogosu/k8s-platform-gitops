@@ -1,0 +1,110 @@
+---
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HELM_VERSION: v3.19.0
+  KUSTOMIZE_VERSION: v5.7.1
+  KUBECONFORM_VERSION: v0.7.0
+
+jobs:
+  lint:
+    name: yamllint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # Runs the same container image scripts/lib.sh falls back to locally, so
+      # a clean `make lint` on a laptop means a clean job here.
+      - name: Run yamllint
+        run: make lint
+
+      # The bootstrap scripts are POSIX sh, not bash: they have to run the same
+      # way under dash on a Debian container and under whatever /bin/sh is on
+      # the reviewer's machine.
+      - name: Run shellcheck
+        run: |
+          docker run --rm -v "$PWD":/repo -w /repo koalaman/shellcheck:v0.10.0 \
+            -s sh scripts/lib.sh scripts/lint.sh scripts/validate.sh \
+            scripts/bootstrap.sh scripts/teardown.sh scripts/demo.sh scripts/set-repo.sh
+
+  manifests:
+    name: render and validate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # Installed by hand rather than through marketplace actions: three curl
+      # calls to release artefacts are a smaller supply-chain surface than
+      # three third-party actions, and the versions are visible in one place.
+      - name: Install helm, kustomize and kubeconform
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz -C /tmp linux-amd64/helm
+          mv /tmp/linux-amd64/helm "$HOME/.local/bin/helm"
+
+          kustomize_base="https://github.com/kubernetes-sigs/kustomize/releases/download"
+          curl -fsSL "${kustomize_base}/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" kustomize
+
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" kubeconform
+
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Report tool versions
+        run: |
+          helm version --short
+          kustomize version
+          kubeconform -v
+
+      # helm lint --strict, helm template, kustomize build of the base and all
+      # three overlays, then kubeconform against the Kubernetes 1.33 schemas
+      # plus the CRD catalog for Application, AppProject and ClusterIssuer.
+      - name: Render and schema-check every manifest
+        run: make validate
+
+      # The Argo CD install is a Kustomization over a pinned upstream release
+      # manifest. Building it here catches a bad tag or a removed file before
+      # `make up` fails on somebody else's laptop.
+      - name: Build the Argo CD install overlay
+        run: |
+          set -euo pipefail
+          kustomize build argocd/install > /tmp/argocd-install.yaml
+          echo "rendered $(grep -c '^kind:' /tmp/argocd-install.yaml) objects"
+          # Upstream ships its own CRDs; their schemas are not in the catalog.
+          kubeconform \
+            -kubernetes-version 1.33.4 \
+            -schema-location default \
+            -ignore-missing-schemas \
+            -strict -summary /tmp/argocd-install.yaml
+
+      - name: Upload rendered manifests
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: rendered-manifests
+          path: .build/
+          # The directory is dot-prefixed, and upload-artifact treats dot-prefixed
+          # paths as hidden and skips them unless told otherwise — which turns
+          # `if-no-files-found: error` into a failure on a run that rendered fine.
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
